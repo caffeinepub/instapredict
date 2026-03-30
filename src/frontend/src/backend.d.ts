@@ -36,6 +36,7 @@ export interface backendInterface {
     ): Promise<void>;
     markPredictionPaid(predId: string): Promise<boolean>;
     getPredictionHistory(): Promise<Prediction[]>;
-    createPredictionCheckout(predId: string, successUrl: string, cancelUrl: string): Promise<string>;
-    verifyPaymentAndUnlock(sessionId: string, predId: string): Promise<boolean>;
+    createRazorpayOrder(predId: string): Promise<string>;
+    verifyRazorpayPayment(paymentId: string, predId: string): Promise<boolean>;
+    getRazorpayKeyId(): Promise<string>;
 }

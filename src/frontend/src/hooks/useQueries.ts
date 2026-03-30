@@ -54,35 +54,27 @@ export function useSavePrediction() {
   });
 }
 
-export function useCreateCheckout() {
+export function useCreateRazorpayOrder() {
   const { actor } = useActor();
   return useMutation({
-    mutationFn: async (params: {
-      predId: string;
-      successUrl: string;
-      cancelUrl: string;
-    }) => {
+    mutationFn: async (params: { predId: string }) => {
       if (!actor) throw new Error("Not connected");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (actor as any).createPredictionCheckout(
-        params.predId,
-        params.successUrl,
-        params.cancelUrl,
-      );
+      const result = await (actor as any).createRazorpayOrder(params.predId);
       return typeof result === "string" ? result : JSON.stringify(result);
     },
   });
 }
 
-export function useVerifyPayment() {
+export function useVerifyRazorpayPayment() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { sessionId: string; predId: string }) => {
+    mutationFn: async (params: { paymentId: string; predId: string }) => {
       if (!actor) throw new Error("Not connected");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (actor as any).verifyPaymentAndUnlock(
-        params.sessionId,
+      return (actor as any).verifyRazorpayPayment(
+        params.paymentId,
         params.predId,
       ) as Promise<boolean>;
     },

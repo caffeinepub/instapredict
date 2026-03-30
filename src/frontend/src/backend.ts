@@ -18,15 +18,10 @@ export interface None {
 }
 export type Option<T> = Some<T> | None;
 function some<T>(value: T): Some<T> {
-    return {
-        __kind__: "Some",
-        value: value
-    };
+    return { __kind__: "Some", value: value };
 }
 function none(): None {
-    return {
-        __kind__: "None"
-    };
+    return { __kind__: "None" };
 }
 function isNone<T>(option: Option<T>): option is None {
     return option.__kind__ === "None";
@@ -35,19 +30,11 @@ function isSome<T>(option: Option<T>): option is Some<T> {
     return option.__kind__ === "Some";
 }
 function unwrap<T>(option: Option<T>): T {
-    if (isNone(option)) {
-        throw new Error("unwrap: none");
-    }
+    if (isNone(option)) { throw new Error("unwrap: none"); }
     return option.value;
 }
-function candid_some<T>(value: T): [T] {
-    return [
-        value
-    ];
-}
-function candid_none<T>(): [] {
-    return [];
-}
+function candid_some<T>(value: T): [T] { return [value]; }
+function candid_none<T>(): [] { return []; }
 function record_opt_to_undefined<T>(arg: T | null): T | undefined {
     return arg == null ? undefined : arg;
 }
@@ -55,44 +42,63 @@ export class ExternalBlob {
     _blob?: Uint8Array<ArrayBuffer> | null;
     directURL: string;
     onProgress?: (percentage: number) => void = undefined;
-    private constructor(directURL: string, blob: Uint8Array<ArrayBuffer> | null){
-        if (blob) {
-            this._blob = blob;
-        }
+    private constructor(directURL: string, blob: Uint8Array<ArrayBuffer> | null) {
+        if (blob) { this._blob = blob; }
         this.directURL = directURL;
     }
-    static fromURL(url: string): ExternalBlob {
-        return new ExternalBlob(url, null);
-    }
+    static fromURL(url: string): ExternalBlob { return new ExternalBlob(url, null); }
     static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob {
-        const url = URL.createObjectURL(new Blob([
-            new Uint8Array(blob)
-        ], {
-            type: 'application/octet-stream'
-        }));
+        const url = URL.createObjectURL(new Blob([new Uint8Array(blob)], { type: 'application/octet-stream' }));
         return new ExternalBlob(url, blob);
     }
     public async getBytes(): Promise<Uint8Array<ArrayBuffer>> {
-        if (this._blob) {
-            return this._blob;
-        }
+        if (this._blob) { return this._blob; }
         const response = await fetch(this.directURL);
         const blob = await response.blob();
         this._blob = new Uint8Array(await blob.arrayBuffer());
         return this._blob;
     }
-    public getDirectURL(): string {
-        return this.directURL;
-    }
+    public getDirectURL(): string { return this.directURL; }
     public withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob {
         this.onProgress = onProgress;
         return this;
     }
 }
+export type UserRole = { Admin: null } | { User: null } | { Guest: null };
+export interface Prediction {
+    id: string;
+    hashtags: string[];
+    contentType: string;
+    timeOfUpload: string;
+    followerCount: bigint;
+    predictedLikes: bigint;
+    timestamp: bigint;
+    paid: boolean;
+}
 export interface backendInterface {
+    _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    getCallerUserRole(): Promise<UserRole>;
+    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    isCallerAdmin(): Promise<boolean>;
+    savePrediction(id: string, hashtags: string[], contentType: string, timeOfUpload: string, followerCount: bigint, predictedLikes: bigint): Promise<void>;
+    markPredictionPaid(predId: string): Promise<boolean>;
+    getPredictionHistory(): Promise<Prediction[]>;
+    createRazorpayOrder(predId: string): Promise<string>;
+    verifyRazorpayPayment(paymentId: string, predId: string): Promise<boolean>;
+    getRazorpayKeyId(): Promise<string>;
 }
 export class Backend implements backendInterface {
-    constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never) {}
+    _initializeAccessControlWithSecret(userSecret: string): Promise<void> { return (this.actor as any)._initializeAccessControlWithSecret(userSecret); }
+    getCallerUserRole(): Promise<UserRole> { return (this.actor as any).getCallerUserRole(); }
+    assignCallerUserRole(user: Principal, role: UserRole): Promise<void> { return (this.actor as any).assignCallerUserRole(user, role); }
+    isCallerAdmin(): Promise<boolean> { return (this.actor as any).isCallerAdmin(); }
+    savePrediction(id: string, hashtags: string[], contentType: string, timeOfUpload: string, followerCount: bigint, predictedLikes: bigint): Promise<void> { return (this.actor as any).savePrediction(id, hashtags, contentType, timeOfUpload, followerCount, predictedLikes); }
+    markPredictionPaid(predId: string): Promise<boolean> { return (this.actor as any).markPredictionPaid(predId); }
+    getPredictionHistory(): Promise<Prediction[]> { return (this.actor as any).getPredictionHistory(); }
+    createRazorpayOrder(predId: string): Promise<string> { return (this.actor as any).createRazorpayOrder(predId); }
+    verifyRazorpayPayment(paymentId: string, predId: string): Promise<boolean> { return (this.actor as any).verifyRazorpayPayment(paymentId, predId); }
+    getRazorpayKeyId(): Promise<string> { return (this.actor as any).getRazorpayKeyId(); }
 }
 export interface CreateActorOptions {
     agent?: Agent;
@@ -101,16 +107,10 @@ export interface CreateActorOptions {
     processError?: (error: unknown) => never;
 }
 export function createActor(canisterId: string, _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, options: CreateActorOptions = {}): Backend {
-    const agent = options.agent || HttpAgent.createSync({
-        ...options.agentOptions
-    });
+    const agent = options.agent || HttpAgent.createSync({ ...options.agentOptions });
     if (options.agent && options.agentOptions) {
         console.warn("Detected both agent and agentOptions passed to createActor. Ignoring agentOptions and proceeding with the provided agent.");
     }
-    const actor = Actor.createActor<_SERVICE>(idlFactory, {
-        agent,
-        canisterId: canisterId,
-        ...options.actorOptions
-    });
+    const actor = Actor.createActor<_SERVICE>(idlFactory, { agent, canisterId: canisterId, ...options.actorOptions });
     return new Backend(actor, _uploadFile, _downloadFile, options.processError);
 }

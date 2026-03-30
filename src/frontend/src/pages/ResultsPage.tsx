@@ -1,17 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { useVerifyPayment } from "@/hooks/useQueries";
 import type { PredictionBreakdown, PredictionInput } from "@/utils/prediction";
 import { generateTips } from "@/utils/prediction";
 import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useRef, useState } from "react";
 
 interface ResultsPageProps {
-  sessionId: string;
   predId: string;
   breakdown: PredictionBreakdown | null;
   input: PredictionInput | null;
+  paid: boolean;
   onNavigate: (page: string, state?: Record<string, unknown>) => void;
 }
 
@@ -77,36 +75,20 @@ function BreakdownBar({ label, value, color, delay }: BreakdownBarProps) {
 }
 
 export function ResultsPage({
-  sessionId,
-  predId,
   breakdown,
   input,
+  paid,
   onNavigate,
 }: ResultsPageProps) {
-  const verifyPayment = useVerifyPayment();
-  const [verified, setVerified] = useState(false);
-  const [verifying, setVerifying] = useState(true);
-  const mutateRef = useRef(verifyPayment.mutateAsync);
-  mutateRef.current = verifyPayment.mutateAsync;
-
-  const verify = useCallback(async () => {
-    try {
-      await mutateRef.current({ sessionId, predId });
-      setVerified(true);
-      setVerifying(false);
-      toast.success("Payment verified! Here are your results 🎉");
-    } catch (err) {
-      console.error(err);
-      setVerified(true);
-      setVerifying(false);
-    }
-  }, [sessionId, predId]);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    verify();
-  }, [verify]);
+    // Brief delay for animation effect
+    const timer = setTimeout(() => setReady(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
-  const likesCount = useCountUp(breakdown?.final ?? 0, 2500, verified);
+  const likesCount = useCountUp(breakdown?.final ?? 0, 2500, ready && paid);
 
   const tips = input ? generateTips(input) : [];
 
@@ -143,9 +125,9 @@ export function ResultsPage({
     <div className="min-h-screen pt-24 pb-16 px-4">
       <div className="max-w-2xl mx-auto">
         <AnimatePresence mode="wait">
-          {verifying ? (
+          {!ready ? (
             <motion.div
-              key="verifying"
+              key="loading"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -153,7 +135,7 @@ export function ResultsPage({
               data-ocid="results.loading_state"
             >
               <Loader2 className="w-12 h-12 animate-spin text-primary" />
-              <p className="text-muted-foreground">Verifying your payment...</p>
+              <p className="text-muted-foreground">Loading your results...</p>
             </motion.div>
           ) : (
             <motion.div

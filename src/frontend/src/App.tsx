@@ -12,25 +12,43 @@ import { useEffect, useState } from "react";
 interface AppState {
   page: string;
   predId?: string;
-  sessionId?: string;
   breakdown?: PredictionBreakdown;
   input?: PredictionInput;
+  paid?: boolean;
+  razorpayRedirect?: boolean;
 }
 
-function parseInitialState(): AppState {
-  const params = new URLSearchParams(window.location.search);
-  const page = params.get("page");
-  const sessionId = params.get("session_id") || undefined;
-  const predId = params.get("pred_id") || undefined;
+const PAYMENT_STATE_KEY = "instapred_payment_state";
 
-  if (page === "results" && sessionId && predId) {
-    return { page: "results", sessionId, predId };
-  }
-  if (page === "predictor") {
-    return { page: "predictor" };
+function parseInitialState(): AppState {
+  // Check if returning from a Razorpay mobile redirect
+  const params = new URLSearchParams(window.location.search);
+  const paymentId = params.get("razorpay_payment_id");
+  if (paymentId) {
+    const saved = sessionStorage.getItem(PAYMENT_STATE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as AppState;
+        // Clean up URL without reload
+        window.history.replaceState({}, "", window.location.pathname);
+        return { ...parsed, page: "payment", razorpayRedirect: true };
+      } catch {
+        // fall through
+      }
+    }
   }
   return { page: "login" };
 }
+
+export const savePaymentState = (
+  state: Omit<AppState, "page" | "razorpayRedirect">,
+) => {
+  sessionStorage.setItem(PAYMENT_STATE_KEY, JSON.stringify(state));
+};
+
+export const clearPaymentState = () => {
+  sessionStorage.removeItem(PAYMENT_STATE_KEY);
+};
 
 export default function App() {
   const { identity, isInitializing } = useInternetIdentity();
@@ -46,12 +64,6 @@ export default function App() {
 
   const navigate = (page: string, extra?: Record<string, unknown>) => {
     setState({ page, ...extra } as AppState);
-    // Clean URL params when navigating away from results
-    if (page !== "results") {
-      const url = new URL(window.location.href);
-      url.search = "";
-      window.history.replaceState({}, "", url.toString());
-    }
   };
 
   const requiresAuth = ["predictor", "payment", "results", "history"].includes(
@@ -103,15 +115,16 @@ export default function App() {
               predId={state.predId}
               breakdown={state.breakdown}
               input={state.input}
+              razorpayRedirect={state.razorpayRedirect}
               onNavigate={navigate}
             />
           )}
         {state.page === "results" && (
           <ResultsPage
-            sessionId={state.sessionId ?? ""}
             predId={state.predId ?? ""}
             breakdown={state.breakdown ?? null}
             input={state.input ?? null}
+            paid={state.paid ?? false}
             onNavigate={navigate}
           />
         )}

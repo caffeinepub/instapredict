@@ -1,6 +1,8 @@
 import Blob "mo:core/Blob";
 import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
+import Int "mo:core/Int";
+import Time "mo:core/Time";
 import Array "mo:core/Array";
 import IC "ic:aaaaa-aa";
 
@@ -49,10 +51,10 @@ module {
     };
   };
 
-  public func httpPostRequest(url : Text, extraHeaders : [Header], body : Text, idempotencyKey : Text, transform : Transform) : async Text {
+  public func httpPostRequest(url : Text, extraHeaders : [Header], body : Text, transform : Transform) : async Text {
     let headers = extraHeaders.concat([
       { name = "User-Agent"; value = "caffeine.ai" },
-      { name = "Idempotency-Key"; value = idempotencyKey },
+      { name = "Idempotency-Key"; value = "Time-" # Time.now().toText() },
     ]);
     let requestBody = body.encodeUtf8();
     let httpRequest : IC.http_request_args = {

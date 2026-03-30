@@ -2,6 +2,7 @@ import Nat "mo:core/Nat";
 import Text "mo:core/Text";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
+import Error "mo:core/Error";
 import List "mo:core/List";
 import OutCall "../http-outcalls/outcall";
 
@@ -19,18 +20,10 @@ module {
     quantity : Nat;
   };
 
-  public func createCheckoutSession(
-    configuration : StripeConfiguration,
-    caller : Principal,
-    idempotencyKey : Text,
-    items : [ShoppingItem],
-    successUrl : Text,
-    cancelUrl : Text,
-    transform : OutCall.Transform
-  ) : async Text {
+  public func createCheckoutSession(configuration : StripeConfiguration, caller : Principal, items : [ShoppingItem], successUrl : Text, cancelUrl : Text, transform : OutCall.Transform) : async Text {
     let requestBody = buildCheckoutSessionBody(items, configuration.allowedCountries, successUrl, cancelUrl, ?caller.toText());
     try {
-      await callStripe(configuration, "v1/checkout/sessions", #post, ?requestBody, idempotencyKey, transform);
+      await callStripe(configuration, "v1/checkout/sessions", #post, ?requestBody, transform);
     } catch (error) {
       Runtime.trap("Failed to create checkout session: " # error.message());
     };
@@ -43,7 +36,7 @@ module {
 
   public func getSessionStatus(configuration : StripeConfiguration, sessionId : Text, transform : OutCall.Transform) : async StripeSessionStatus {
     try {
-      let reply = await callStripe(configuration, "v1/checkout/sessions/" # sessionId, #get, null, "", transform);
+      let reply = await callStripe(configuration, "v1/checkout/sessions/" # sessionId, #get, null, transform);
       if (reply.contains(#text "\"error\"")) {
         #failed({ error = "Stripe API error" });
       } else {
@@ -55,7 +48,7 @@ module {
     };
   };
 
-  func callStripe(configuration : StripeConfiguration, endpoint : Text, method : { #get; #post }, body : ?Text, idempotencyKey : Text, transform : OutCall.Transform) : async Text {
+  func callStripe(configuration : StripeConfiguration, endpoint : Text, method : { #get; #post }, body : ?Text, transform : OutCall.Transform) : async Text {
     var headers = [
       {
         name = "authorization";
@@ -82,7 +75,7 @@ module {
           case (?rawBody) { rawBody };
           case (null) { Runtime.trap("HTTP POST requires a HTTP body") };
         };
-        await OutCall.httpPostRequest(url, headers, postBody, idempotencyKey, transform);
+        await OutCall.httpPostRequest(url, headers, postBody, transform);
       };
     };
   };
